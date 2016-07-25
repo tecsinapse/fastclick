@@ -1,3 +1,6 @@
+;(function () {
+	'use strict';
+
 	/**
 	 * @preserve FastClick: polyfill to remove click delays on browsers with touch UIs.
 	 *
@@ -18,7 +21,6 @@
 	 * @param {Object} [options={}] The options to override the defaults
 	 */
 	function FastClick(layer, options) {
-    'use strict';
 		var oldOnClick;
 
 		options = options || {};
@@ -509,6 +511,20 @@
 		return labelElement.querySelector('button, input:not([type=hidden]), keygen, meter, output, progress, select, textarea');
 	};
 
+	/**
+	 * Finds if any of the element's ancestors is a label
+	 *
+	 * @param {EventTarget|HTMLLabelElement} targetElement
+	 * @returns {Element|null}
+	 */
+	FastClick.prototype.closestLabel = function(targetElement) {
+		var el = targetElement;
+		do {
+			if (el.tagName && el.tagName.toLowerCase() === 'label') {
+				return el;
+			}
+		} while((el = el.parentNode));
+	};
 
 	/**
 	 * On touch end, determine whether to send a click event at once.
@@ -517,7 +533,7 @@
 	 * @returns {boolean}
 	 */
 	FastClick.prototype.onTouchEnd = function(event) {
-		var forElement, trackingClickStart, targetTagName, scrollParent, touch, targetElement = this.targetElement;
+		var forElement, trackingClickStart, scrollParent, touch, targetElement = this.targetElement, labelParent;
 
 		if (!this.trackingClick) {
 			return true;
@@ -554,8 +570,9 @@
 			targetElement.fastClickScrollParent = this.targetElement.fastClickScrollParent;
 		}
 
-		targetTagName = targetElement.tagName.toLowerCase();
-		if (targetTagName === 'label') {
+		labelParent = this.closestLabel(targetElement);
+		if (labelParent) {
+			targetElement = labelParent;
 			forElement = this.findControl(targetElement);
 			if (forElement) {
 				this.focus(targetElement);
@@ -733,7 +750,6 @@
 		var metaViewport;
 		var chromeVersion;
 		var blackberryVersion;
-		var firefoxVersion;
 
 		// Devices that don't support touch don't need FastClick
 		if (typeof window.ontouchstart === 'undefined') {
@@ -786,26 +802,14 @@
 			}
 		}
 
-		// IE10 with -ms-touch-action: none or manipulation, which disables double-tap-to-zoom (issue #97)
-		if (layer.style.msTouchAction === 'none' || layer.style.touchAction === 'manipulation') {
+		// IE10 with -ms-touch-action: none, which disables double-tap-to-zoom (issue #97)
+		if (layer.style.msTouchAction === 'none') {
 			return true;
-		}
-
-		// Firefox version - zero for other browsers
-		firefoxVersion = +(/Firefox\/([0-9]+)/.exec(navigator.userAgent) || [,0])[1];
-
-		if (firefoxVersion >= 27) {
-			// Firefox 27+ does not have tap delay if the content is not zoomable - https://bugzilla.mozilla.org/show_bug.cgi?id=922896
-
-			metaViewport = document.querySelector('meta[name=viewport]');
-			if (metaViewport && (metaViewport.content.indexOf('user-scalable=no') !== -1 || document.documentElement.scrollWidth <= window.outerWidth)) {
-				return true;
-			}
 		}
 
 		// IE11: prefixed -ms-touch-action is no longer supported and it's recomended to use non-prefixed version
 		// http://msdn.microsoft.com/en-us/library/windows/apps/Hh767313.aspx
-		if (layer.style.touchAction === 'none' || layer.style.touchAction === 'manipulation') {
+		if (layer.style.touchAction === 'none') {
 			return true;
 		}
 
@@ -824,7 +828,7 @@
 	};
 
 
-	if (typeof define === 'function' && typeof define.amd === 'object' && define.amd) {
+	if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
 
 		// AMD. Register as an anonymous module.
 		define(function() {
@@ -836,3 +840,4 @@
 	} else {
 		window.FastClick = FastClick;
 	}
+}());
